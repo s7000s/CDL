@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CDL Practice Test Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; padding: 1em; background: #f9f9f9; }
+    h1, h2 { text-align: center; }
+    select { font-size: 1.2em; padding: 0.3em; margin-bottom: 1em; display: block; margin: 0 auto; }
+    button { font-size: 1.5em; padding: 0.75em 1.5em; margin: 1em 0; border: none; border-radius: 6px; background: #007bff; color: white; cursor: pointer; }
+    button:hover { background: #005fc1; }
+    .question { margin: 1em 0; }
+    .choices label { display: block; margin: 1em 0; cursor: pointer; }
+    .choices input[type="radio"] { margin-right: 10px; vertical-align: middle; }
+    .result { font-weight: bold; margin-top: 1em; }
+    .correct { color: green; }
+    .incorrect { color: red; }
+    .stats { margin: 1em 0; text-align: center; font-size: 1.2em; }
+    #quiz { max-width: 700px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <h1>🚚 CDL Practice Test Hub</h1>
+
+  <h2>Select a Test</h2>
+  <select id="testSelector">
+    <option value="general.js">🧠 General Knowledge</option>
+    <option value="airbrake.js">💨 Air Brake</option>
+    <option value="combination.js">🔗 Combination Vehicles</option>
+    <option value="tanker.js">🛢 Tanker Vehicle</option>
+    <option value="doubletriple.js">🚛 Doubles & Triples</option>
+  </select>
+
+  <div id="quiz">
+    <div class="stats">
+      <span id="questionCounter">1 / 1</span> |
+      <span id="scorePercent">Correct: 0%</span>
+    </div>
+    <div id="questionContainer"></div>
+    <button id="answerBtn" onclick="checkAnswer()">Answer</button>
+    <button id="nextBtn" onclick="nextQuestion()" style="display:none;">Next</button>
+    <button id="restartBtn" onclick="restartTest()" style="display:none;">Try Again</button>
+  </div>
+
+  <script>
+    let currentIndex = 0;
+    let score = 0;
+    let questions = [];
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    document.getElementById("testSelector").addEventListener("change", e => {
+      const scriptName = e.target.value;
+      loadQuestions(scriptName);
+    });
+
+    function loadQuestions(filename) {
+      const existingScript = document.querySelector("#questionsScript");
+      if (existingScript) existingScript.remove();
+
+      questions = [];
+      currentIndex = 0;
+      score = 0;
+
+      const script = document.createElement("script");
+      script.src = filename;
+      script.id = "questionsScript";
+
+      script.onload = () => {
+        if (!Array.isArray(questions) || questions.length === 0) {
+          const container = document.getElementById("questionContainer");
+          container.innerHTML = `<p style="color:red;">❌ No questions loaded from <strong>${filename}</strong>. Please check the file format.</p>`;
+          document.getElementById("answerBtn").style.display = "none";
+          document.getElementById("nextBtn").style.display = "none";
+          document.getElementById("restartBtn").style.display = "inline-block";
+          document.getElementById("questionCounter").innerText = `0 / 0`;
+          document.getElementById("scorePercent").innerText = `Correct: 0%`;
+          return;
+        }
+
+        shuffle(questions);
+        currentIndex = 0;
+        score = 0;
+        showQuestion();
+      };
+
+      script.onerror = () => {
+        const container = document.getElementById("questionContainer");
+        container.innerHTML = `<p style="color:red;">❌ Failed to load test file <strong>${filename}</strong>. File not found.</p>`;
+        document.getElementById("answerBtn").style.display = "none";
+        document.getElementById("nextBtn").style.display = "none";
+        document.getElementById("restartBtn").style.display = "inline-block";
+        document.getElementById("questionCounter").innerText = `0 / 0`;
+        document.getElementById("scorePercent").innerText = `Correct: 0%`;
+      };
+
+      document.body.appendChild(script);
+    }
+
+    function showQuestion() {
+      const container = document.getElementById("questionContainer");
+      const answerBtn = document.getElementById("answerBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const restartBtn = document.getElementById("restartBtn");
+
+      container.innerHTML = "";
+      nextBtn.style.display = "none";
+      restartBtn.style.display = "none";
+      answerBtn.style.display = "inline-block";
+
+      if (!questions || questions.length === 0) return;
+
+      if (currentIndex >= questions.length) {
+        container.innerHTML = `<p class="result">🏁 Test Complete! You answered <strong>${score}</strong> out of <strong>${questions.length}</strong> correctly.</p>`;
+        document.getElementById("scorePercent").innerText = `Correct: ${Math.round((score / questions.length) * 100)}%`;
+        answerBtn.style.display = "none";
+        restartBtn.style.display = "inline-block";
+        return;
+      }
+
+      const q = questions[currentIndex];
+      document.getElementById("questionCounter").innerText = `${currentIndex + 1} / ${questions.length}`;
+
+      const qDiv = document.createElement("div");
+      qDiv.className = "question";
+      let html = `<strong>Question ${currentIndex + 1}:</strong> ${q.question}`;
+      if (q.image) {
+        html += `<br><img src="${q.image}" alt="Question image" style="max-width:100%; margin-top:10px;">`;
+      }
+      qDiv.innerHTML = html;
+      container.appendChild(qDiv);
+
+      const choicesDiv = document.createElement("div");
+      choicesDiv.className = "choices";
+      q.choices.forEach(choice => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "choice";
+        input.value = choice;
+        label.appendChild(input);
+
+        const span = document.createElement("span");
+        span.innerHTML = choice;
+        label.appendChild(span);
+
+        choicesDiv.appendChild(label);
+      });
+      container.appendChild(choicesDiv);
+
+      const resultDiv = document.createElement("div");
+      resultDiv.id = "result";
+      container.appendChild(resultDiv);
+    }
+
+    function checkAnswer() {
+      const selected = document.querySelector('input[name="choice"]:checked');
+      if (!selected) return;
+
+      const resultDiv = document.getElementById("result");
+      const correctAnswer = questions[currentIndex].correct;
+
+      const selectedNormalized = selected.value.trim();
+      const correctNormalized = correctAnswer.trim();
+
+      if (selectedNormalized === correctNormalized) {
+        resultDiv.innerHTML = `<span class="correct">✅ Correct!</span>`;
+        score++;
+      } else {
+        resultDiv.innerHTML = `<span class="incorrect">❌ Incorrect. Correct answer: ${correctAnswer}</span>`;
+      }
+
+      document.getElementById("scorePercent").innerText = `Correct: ${Math.round((score / (currentIndex + 1)) * 100)}%`;
+
+      document.getElementById("answerBtn").style.display = "none";
+      document.getElementById("nextBtn").style.display = "inline-block";
+    }
+
+    function nextQuestion() {
+      currentIndex++;
+      showQuestion();
+    }
+
+    function restartTest() {
+      currentIndex = 0;
+      score = 0;
+      showQuestion();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadQuestions("general.js");
+    });
+  </script>
+</body>
+</html>
